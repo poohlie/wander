@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#e8efe0">
+<title>Wander · Singapore park walks</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Ctext y=%2726%27 font-size=%2726%27%3E🌿%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="vendor/leaflet.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="trees" aria-hidden="true"></div>
+
+<header class="top">
+  <div class="brand"><span class="leaf">🌿</span> Wander <small>Singapore park walks</small></div>
+  <nav class="tabs">
+    <button type="button" id="tabPlan" class="on">Plan</button>
+    <button type="button" id="tabSaved">Saved <span id="savedCount" class="count">0</span></button>
+  </nav>
+  <div id="skyNote" class="sky-note"></div>
+</header>
+
+<main>
+  <section id="mapWrap" class="map-wrap">
+    <div id="map"></div>
+    <div id="mapHint" class="map-hint">Tap the map to set a start point</div>
+  </section>
+
+  <section class="panel" id="panel">
+    <div class="grab" id="grab"></div>
+
+    <form id="form" autocomplete="off">
+      <h2>Plan a walk</h2>
+
+      <label class="field">
+        <span class="lbl">Distance goal <b id="distOut">5 km</b></span>
+        <div class="row">
+          <input type="range" id="dist" min="1" max="150" step="1" value="5">
+          <input type="number" id="distNum" min="1" max="150" step="0.5" value="5" aria-label="Distance in km">
+        </div>
+        <small class="note" id="distNote"></small>
+      </label>
+
+      <div class="field">
+        <span class="lbl">Start</span>
+        <div class="row">
+          <select id="startSel"></select>
+          <button type="button" class="ghost" id="locBtn" title="Use my location">📍</button>
+        </div>
+        <small id="startNote" class="note"></small>
+      </div>
+
+      <div class="field">
+        <span class="lbl">End <i>(optional — blank makes a loop)</i></span>
+        <select id="endSel"></select>
+      </div>
+
+      <div class="field">
+        <span class="lbl">Areas of interest</span>
+        <div class="chips" id="chips"></div>
+      </div>
+
+      <label class="check" style="margin:-4px 0 12px"><input type="checkbox" id="avoidStairs"><span>Avoid staircases <small class="note" style="display:inline">(stroller / wheelchair friendly)</small></span></label>
+
+      <div class="field">
+        <span class="lbl">Rest stops</span>
+        <div class="seg" id="restMode">
+          <button type="button" data-mode="count" class="on">Number of stops</button>
+          <button type="button" data-mode="every">Rest every…</button>
+        </div>
+        <div class="row" id="restCountRow">
+          <input type="number" id="restCount" min="0" max="40" value="2"> <span>stops</span>
+        </div>
+        <div class="row" id="restEveryRow" hidden>
+          <input type="number" id="restEvery" min="0.5" max="150" step="0.5" value="2" inputmode="decimal"> <span>km between rests</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="lbl">Leaving at</span>
+        <input type="datetime-local" id="when">
+      </div>
+
+      <button class="go" id="goBtn" type="submit">Find my walk</button>
+      <div id="status" class="status" role="status"></div>
+    </form>
+
+    <div id="results" hidden></div>
+    <div id="saved" hidden></div>
+    <p class="note foot">Trail data © National Parks Board, Singapore (data.gov.sg, <a href="https://data.gov.sg/open-data-licence" target="_blank" rel="noopener">Open Data Licence v1.0</a>) · Map © OpenStreetMap contributors<br><button type="button" class="linkbtn" id="aboutLink">Privacy, licences &amp; disclaimer</button></p>
+  </section>
+</main>
+
+<div id="notice" class="notice" role="region" aria-label="Privacy notice" hidden>
+  <p><b>Your privacy:</b> to plan walks, the places you pick are sent to OpenStreetMap services (map, walking routes, toilets &amp; water). This app has no server of its own and stores nothing about you — saved walks stay in this browser only.
+  <button type="button" class="linkbtn" id="noticeMore">Details</button></p>
+  <button type="button" class="btn" id="noticeOk">Got it</button>
+</div>
+
+<dialog id="aboutDlg" class="about" aria-labelledby="aboutTitle">
+  <form method="dialog" class="about-close"><button class="ghost" aria-label="Close">✕</button></form>
+  <h2 id="aboutTitle">Privacy, licences &amp; disclaimer</h2>
+
+  <h3>Where your data goes</h3>
+  <p>Wander is a web page that runs in your browser. It has <b>no server, account, database, cookies or analytics of its own</b>, and nothing you do is sent to, or kept by, the people who made or published it. To work, though, your browser contacts a few free public services directly, and they receive your IP address plus the following:</p>
+  <ul>
+    <li><b>Map pictures — OpenStreetMap tile servers</b> (tile.openstreetmap.org): the map areas you view, and when you export a PDF.</li>
+    <li><b>Walking routes — OpenStreetMap foot router</b> (routing.openstreetmap.de): the coordinates of the start, end and pins, only when a stretch has to leave the NParks paths.</li>
+    <li><b>Toilets, water, shelters and sights — Overpass API</b> (overpass-api.de and mirrors): the area around your route.</li>
+    <li><b>Weather — data.gov.sg (NEA)</b>: a general Singapore forecast request. Your location is <i>not</i> sent; the nearest area is picked in your browser.</li>
+    <li><b>“Open in Google Maps”</b> and <b>Google My Maps</b> only happen if you click them; your route points then go to Google, under Google's own privacy policy.</li>
+  </ul>
+  <p>Each of those services has its own privacy policy and logs. “Use my location” is read by your browser and used only on the page — but once it becomes a start point, it is sent to the services above like any other point. If this page is hosted by a service such as GitHub, that host may also keep ordinary visit logs.</p>
+
+  <h3>What is stored, and where</h3>
+  <ul>
+    <li><b>Saved walks and journal notes</b> are kept only in <i>your own browser</i> (local storage) on this device, under this web address. They are never uploaded. Clearing your browser data deletes them — use <b>Saved → Export backup</b> to keep a copy.</li>
+    <li>PDFs, KML and GPX files are created on your device and go nowhere unless you share them.</li>
+  </ul>
+
+  <h3>Licences &amp; credits</h3>
+  <ul>
+    <li><b>Map data © OpenStreetMap contributors</b>, available under the <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">Open Database Licence (ODbL)</a>. Map tiles are served by the OpenStreetMap Foundation under its tile usage policy.</li>
+    <li><b>Park, trail and park-connector data © National Parks Board, Singapore</b> (data.gov.sg), used under the <a href="https://data.gov.sg/open-data-licence" target="_blank" rel="noopener">Singapore Open Data Licence v1.0</a>. It is shown here in a simplified, re-processed form. Weather data: National Environment Agency via data.gov.sg, same licence.</li>
+    <li>Built with <a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a> (BSD-2-Clause) and <a href="https://github.com/parallax/jsPDF" target="_blank" rel="noopener">jsPDF</a> (MIT).</li>
+    <li>Exported PDFs, KML and GPX files contain OpenStreetMap and NParks data. If you share them, keep the attribution (the PDF already includes it).</li>
+    <li>Wander is an independent project. It is not affiliated with or endorsed by NParks, OpenStreetMap, NEA or Google. “Google Maps” and “Google Earth” are trademarks of Google LLC.</li>
+  </ul>
+
+  <h3>Please use your judgement</h3>
+  <p>Routes, distances, times, rest stops and weather notes are <b>suggestions and estimates, not guarantees</b>. Paths can be closed, flooded, unlit or unsuitable for your fitness or mobility; stairs and short road links are not always marked; places listed may be shut. Check <a href="https://www.nparks.gov.sg" target="_blank" rel="noopener">NParks advisories</a> before you go, watch for rain and lightning, carry water, and follow signs and the rules of each park. You walk at your own risk.</p>
+
+  <div class="btn-row"><button type="button" class="btn" id="aboutOk">Close</button></div>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="vendor/leaflet.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="parks.js"></script>
+<script src="net.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
